@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
 
-namespace Jellyfin.Plugin.OpenSubtitles;
+namespace Jellyfin.Plugin.BazarrPlus;
 
 internal sealed class ClientSideRateLimitedHandler : DelegatingHandler
 {

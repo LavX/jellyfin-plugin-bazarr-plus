@@ -3,22 +3,22 @@ using System.Net.Mime;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.OpenSubtitles.OpenSubtitlesHandler;
-using Jellyfin.Plugin.OpenSubtitles.OpenSubtitlesHandler.Models;
+using Jellyfin.Plugin.BazarrPlus.OpenSubtitlesHandler;
+using Jellyfin.Plugin.BazarrPlus.OpenSubtitlesHandler.Models;
 using MediaBrowser.Common.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Jellyfin.Plugin.OpenSubtitles.API;
+namespace Jellyfin.Plugin.BazarrPlus.API;
 
 /// <summary>
-/// The open subtitles plugin controller.
+/// The Bazarr+ plugin controller.
 /// </summary>
 [ApiController]
 [Produces(MediaTypeNames.Application.Json)]
 [Authorize(Policy = Policies.SubtitleManagement)]
-public class OpenSubtitlesController : ControllerBase
+public class BazarrPlusController : ControllerBase
 {
     /// <summary>
     /// Validates login info.
@@ -34,7 +34,7 @@ public class OpenSubtitlesController : ControllerBase
     /// An <see cref="NoContentResult"/> if the login info is valid, a <see cref="BadRequestResult"/> if the request body missing is data
     /// or <see cref="UnauthorizedResult"/> if the login info is not valid.
     /// </returns>
-    [HttpPost("Jellyfin.Plugin.OpenSubtitles/ValidateLoginInfo")]
+    [HttpPost("Jellyfin.Plugin.BazarrPlus/ValidateLoginInfo")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

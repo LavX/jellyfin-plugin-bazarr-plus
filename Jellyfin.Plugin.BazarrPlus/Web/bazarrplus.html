@@ -1,0 +1,37 @@
+<div id="BazarrPlusConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-controller="__plugin/bazarrplusjs">
+    <div data-role="content">
+        <div class="content-primary">
+            <form id="BazarrPlusConfigForm">
+                <div class="verticalSection">
+                    <h2 class="sectionTitle sectionTitle-cards">Bazarr+ Subtitles</h2>
+                    <p>
+                        This plugin fetches subtitles from a self-hosted Bazarr+ instance via the
+                        OpenSubtitles-compatible REST endpoint. Enable the External Integration
+                        endpoint in your Bazarr+ Settings first.
+                    </p>
+                </div>
+                <div class="inputContainer">
+                    <input is="emby-input" type="url" id="BazarrUrl" label="Bazarr+ URL" required />
+                    <div class="fieldDescription">
+                        e.g. <code>http://bazarr.lavx.local:6767</code> &mdash; no trailing slash. The plugin appends <code>/api/v1/...</code> itself.
+                    </div>
+                </div>
+                <div class="inputContainer">
+                    <input is="emby-input" type="password" id="BazarrToken" label="Bazarr+ API Token" required />
+                    <div class="fieldDescription">
+                        Paste the token shown in Bazarr+ Settings &rarr; External Integration.
+                    </div>
+                </div>
+                <div class="fieldDescription" id="bazarrplusresponse"></div>
+                <div>
+                    <button id="save-button" is="emby-button" type="submit" class="raised button-submit block">
+                        <span>${Save}</span>
+                    </button>
+                </div>
+                <div class="fieldDescription" style="margin-top: 1em; opacity: 0.7;">
+                    Bazarr+ is not affiliated with or endorsed by OpenSubtitles.com.
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

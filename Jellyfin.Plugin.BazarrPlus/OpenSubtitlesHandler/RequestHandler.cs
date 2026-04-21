@@ -7,18 +7,28 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
-using Jellyfin.Plugin.OpenSubtitles.OpenSubtitlesHandler.Models;
+using Jellyfin.Plugin.BazarrPlus.OpenSubtitlesHandler.Models;
 using Microsoft.Net.Http.Headers;
 
-namespace Jellyfin.Plugin.OpenSubtitles.OpenSubtitlesHandler;
+namespace Jellyfin.Plugin.BazarrPlus.OpenSubtitlesHandler;
 
 /// <summary>
 /// The request handler.
 /// </summary>
 public static class RequestHandler
 {
-    private const string BaseApiUrl = "https://api.opensubtitles.com/api/v1";
     private const int RetryLimit = 5;
+
+    private static string GetBaseApiUrl()
+    {
+        var url = BazarrPlusPlugin.Instance?.Configuration.BazarrUrl ?? string.Empty;
+        return url.TrimEnd('/') + "/api/v1";
+    }
+
+    private static string GetApiToken()
+    {
+        return BazarrPlusPlugin.Instance?.Configuration.BazarrToken ?? string.Empty;
+    }
 
     /// <summary>
     /// Send the request.
@@ -42,9 +52,9 @@ public static class RequestHandler
         bool isFullUrl = false)
     {
         headers ??= new Dictionary<string, string>();
-        headers.TryAdd("Api-Key", OpenSubtitlesPlugin.ApiKey);
+        headers.TryAdd("Api-Key", GetApiToken());
 
-        var url = isFullUrl ? endpoint : BaseApiUrl + endpoint;
+        var url = isFullUrl ? endpoint : GetBaseApiUrl() + endpoint;
         var response = await OpenSubtitlesRequestHelper.Instance!.SendRequestAsync(url, method, body, headers, cancellationToken).ConfigureAwait(false);
 
         if (response.statusCode == HttpStatusCode.TooManyRequests

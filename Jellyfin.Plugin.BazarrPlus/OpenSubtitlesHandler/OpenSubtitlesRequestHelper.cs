@@ -11,7 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Net.Http.Headers;
 
-namespace Jellyfin.Plugin.OpenSubtitles.OpenSubtitlesHandler;
+namespace Jellyfin.Plugin.BazarrPlus.OpenSubtitlesHandler;
 
 /// <summary>
 /// Http util helper.
@@ -70,7 +70,7 @@ public class OpenSubtitlesRequestHelper
         Dictionary<string, string> headers,
         CancellationToken cancellationToken)
     {
-        var client = _clientFactory.CreateClient(nameof(OpenSubtitles));
+        var client = _clientFactory.CreateClient("BazarrPlus");
 
         HttpContent? content = null;
         if (method != HttpMethod.Get && body is not null)

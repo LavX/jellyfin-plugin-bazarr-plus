@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace Jellyfin.Plugin.OpenSubtitles.OpenSubtitlesHandler.Models;
+namespace Jellyfin.Plugin.BazarrPlus.OpenSubtitlesHandler.Models;
 
 /// <summary>
 /// The http response.

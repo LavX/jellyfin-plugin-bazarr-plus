@@ -10,9 +10,9 @@ using System.Security.Authentication;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.OpenSubtitles.Configuration;
-using Jellyfin.Plugin.OpenSubtitles.OpenSubtitlesHandler;
-using Jellyfin.Plugin.OpenSubtitles.OpenSubtitlesHandler.Models.Responses;
+using Jellyfin.Plugin.BazarrPlus.Configuration;
+using Jellyfin.Plugin.BazarrPlus.OpenSubtitlesHandler;
+using Jellyfin.Plugin.BazarrPlus.OpenSubtitlesHandler.Models.Responses;
 using MediaBrowser.Common.Extensions;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Controller.Subtitles;
@@ -20,14 +20,14 @@ using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Providers;
 using Microsoft.Extensions.Logging;
 
-namespace Jellyfin.Plugin.OpenSubtitles;
+namespace Jellyfin.Plugin.BazarrPlus;
 
 /// <summary>
 /// The open subtitle downloader.
 /// </summary>
-public class OpenSubtitleDownloader : ISubtitleProvider
+public class BazarrPlusDownloader : ISubtitleProvider
 {
-    private readonly ILogger<OpenSubtitleDownloader> _logger;
+    private readonly ILogger<BazarrPlusDownloader> _logger;
     private readonly ConcurrentBag<int> _badSubtitleIds = new ();
     private LoginInfo? _login;
     private DateTime? _limitReset;
@@ -36,11 +36,11 @@ public class OpenSubtitleDownloader : ISubtitleProvider
     private PluginConfiguration? _configuration;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OpenSubtitleDownloader"/> class.
+    /// Initializes a new instance of the <see cref="BazarrPlusDownloader"/> class.
     /// </summary>
-    /// <param name="logger">Instance of the <see cref="ILogger{OpenSubtitleDownloader}"/> interface.</param>
+    /// <param name="logger">Instance of the <see cref="ILogger{BazarrPlusDownloader}"/> interface.</param>
     /// <param name="httpClientFactory">The <see cref="IHttpClientFactory"/> for creating Http Clients.</param>
-    public OpenSubtitleDownloader(ILogger<OpenSubtitleDownloader> logger, IHttpClientFactory httpClientFactory)
+    public BazarrPlusDownloader(ILogger<BazarrPlusDownloader> logger, IHttpClientFactory httpClientFactory)
     {
         Instance = this;
         _logger = logger;
@@ -50,10 +50,10 @@ public class OpenSubtitleDownloader : ISubtitleProvider
     /// <summary>
     /// Gets the downloader instance.
     /// </summary>
-    public static OpenSubtitleDownloader? Instance { get; private set; }
+    public static BazarrPlusDownloader? Instance { get; private set; }
 
     /// <inheritdoc />
-    public string Name => "Open Subtitles";
+    public string Name => "Bazarr+ Subtitles";
 
     /// <inheritdoc />
     public IEnumerable<VideoContentType> SupportedMediaTypes
@@ -380,45 +380,30 @@ public class OpenSubtitleDownloader : ISubtitleProvider
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_configuration.Username) || string.IsNullOrWhiteSpace(_configuration.Password))
+        if (string.IsNullOrWhiteSpace(_configuration.BazarrUrl) || string.IsNullOrWhiteSpace(_configuration.BazarrToken))
         {
-            throw new AuthenticationException("Account username and/or password are not set up");
+            throw new AuthenticationException("Bazarr+ URL and API Token must be configured");
         }
 
-        if (_configuration.CredentialsInvalid)
-        {
-            _logger.LogDebug("Skipping login due to credentials being invalid");
-            return;
-        }
-
+        // Bazarr+ accepts any credentials on /login and returns a JWT signed by the compat secret.
+        // The real auth is the Api-Key header (BazarrToken), set by RequestHandler. Username/password
+        // are placeholders that Bazarr+ ignores.
         var loginResponse = await OpenSubtitlesApi.LogInAsync(
-            _configuration.Username,
-            _configuration.Password,
+            "bazarr",
+            "bazarr-placeholder",
             cancellationToken).ConfigureAwait(false);
 
         if (!loginResponse.Ok)
         {
-            // 400 = Using email, 401 = invalid credentials
-            if ((loginResponse.Code == HttpStatusCode.BadRequest && _configuration.Username.Contains('@', StringComparison.OrdinalIgnoreCase))
-                || loginResponse.Code == HttpStatusCode.Unauthorized)
-            {
-                _logger.LogError("Login failed due to invalid credentials, invalidating them ({Code} - {Body})", loginResponse.Code, loginResponse.Body);
-                _configuration.CredentialsInvalid = true;
-                OpenSubtitlesPlugin.Instance!.SaveConfiguration(_configuration);
-            }
-            else
-            {
-                _logger.LogError("Login failed: {Code} - {Body}", loginResponse.Code, loginResponse.Body);
-            }
-
-            throw new AuthenticationException("Authentication to OpenSubtitles failed.");
+            _logger.LogError("Login to Bazarr+ failed: {Code} - {Body}", loginResponse.Code, loginResponse.Body);
+            throw new AuthenticationException("Authentication to Bazarr+ failed.");
         }
 
         _login = loginResponse.Data;
 
         await UpdateUserInfo(cancellationToken).ConfigureAwait(false);
 
-        _logger.LogDebug("Logged in, download limit reset at {ResetTime}, token expiration at {ExpirationDate}", _limitReset, _login?.ExpirationDate);
+        _logger.LogDebug("Logged in to Bazarr+, download limit reset at {ResetTime}, token expiration at {ExpirationDate}", _limitReset, _login?.ExpirationDate);
     }
 
     private async Task UpdateUserInfo(CancellationToken cancellationToken)

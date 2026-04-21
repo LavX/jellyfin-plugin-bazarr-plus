@@ -4,10 +4,10 @@ using System.Globalization;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.OpenSubtitles.OpenSubtitlesHandler.Models;
-using Jellyfin.Plugin.OpenSubtitles.OpenSubtitlesHandler.Models.Responses;
+using Jellyfin.Plugin.BazarrPlus.OpenSubtitlesHandler.Models;
+using Jellyfin.Plugin.BazarrPlus.OpenSubtitlesHandler.Models.Responses;
 
-namespace Jellyfin.Plugin.OpenSubtitles.OpenSubtitlesHandler;
+namespace Jellyfin.Plugin.BazarrPlus.OpenSubtitlesHandler;
 
 /// <summary>
 /// The open subtitles helper class.

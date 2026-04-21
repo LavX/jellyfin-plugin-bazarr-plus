@@ -1,50 +1,43 @@
-<h1 align="center">Jellyfin OpenSubtitles Plugin</h1>
-<h3 align="center">Part of the <a href="https://jellyfin.org">Jellyfin Project</a></h3>
+# Bazarr+ Subtitles (Jellyfin plugin)
 
-<p align="center">
-<img alt="Plugin Banner" src="https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/plugins/SVG/jellyfin-plugin-opensubtitles.svg?sanitize=true"/>
-<br/>
-<br/>
-<a href="https://github.com/jellyfin/jellyfin-plugin-opensubtitles/actions?query=workflow%3A%22Test+Build+Plugin%22">
-<img alt="GitHub Workflow Status" src="https://img.shields.io/github/workflow/status/jellyfin/jellyfin-plugin-opensubtitles/Test%20Build%20Plugin.svg">
-</a>
-<a href="https://github.com/jellyfin/jellyfin-plugin-opensubtitles">
-<img alt="GPLv3 License" src="https://img.shields.io/github/license/jellyfin/jellyfin-plugin-opensubtitles.svg"/>
-</a>
-<a href="https://github.com/jellyfin/jellyfin-plugin-opensubtitles/releases">
-<img alt="Current Release" src="https://img.shields.io/github/release/jellyfin/jellyfin-plugin-opensubtitles.svg"/>
-</a>
-</p>
+A Jellyfin 10.11+ subtitle provider plugin that fetches subtitles from a self-hosted
+[Bazarr+](https://github.com/LavX/bazarr) instance via the OpenSubtitles-compatible REST
+endpoint.
 
-## About
+## Requirements
 
-This is a plugin allows you to download subtitles from [Open Subtitles](https://opensubtitles.com) for your media.
+- Jellyfin **10.11.0+**
+- A running Bazarr+ **v2.2.0+** instance with External Integration enabled in Settings
+- The Bazarr+ API Token (shown in Settings → External Integration)
 
 ## Installation
 
-[See the official documentation for install instructions](https://jellyfin.org/docs/general/server/plugins/index.html#installing).
+1. Build `Jellyfin.Plugin.BazarrPlus.dll` (see below), or download a release zip.
+2. Drop the DLL into your Jellyfin server's `plugins/Bazarr+ Subtitles_<version>/` directory.
+3. Restart Jellyfin.
+4. In the Jellyfin admin: **Dashboard → Plugins → Bazarr+ Subtitles → Settings**.
+5. Fill in:
+   - **Bazarr+ URL**: e.g. `http://bazarr.lavx.local:6767`
+   - **Bazarr+ API Token**: paste from the Bazarr+ Settings page.
+6. Enable the provider in **Dashboard → Libraries → [library] → Subtitles**.
 
-## Build
+## Build from source
 
-1. To build this plugin you will need [.Net 8.x](https://dotnet.microsoft.com/download/dotnet/8.0).
+Requires .NET 9 SDK.
 
-2. Build plugin with following command
-  ```
-  dotnet publish --configuration Release --output bin
-  ```
+    dotnet build -c Release
 
-3. Place the dll-file in the `plugins/opensubtitles` folder (you might need to create the folders) of your JF install
+The compiled DLL lands under `Jellyfin.Plugin.BazarrPlus/bin/Release/net9.0/`.
 
-## Releasing
+## License
 
-To release the plugin we recommend [JPRM](https://github.com/oddstr13/jellyfin-plugin-repository-manager) that will build and package the plugin.
-For additional context and for how to add the packaged plugin zip to a plugin manifest see the [JPRM documentation](https://github.com/oddstr13/jellyfin-plugin-repository-manager) for more info.
+GPL v2 or later. Independent reimplementation of the OpenSubtitles REST protocol
+for Bazarr+ interoperability. "OpenSubtitles" is a trademark of its respective
+owner; this plugin is not affiliated with or endorsed by OpenSubtitles.com.
 
-## Contributing
+## Relationship to upstream
 
-We welcome all contributions and pull requests! If you have a larger feature in mind please open an issue so we can discuss the implementation before you start.
-In general refer to our [contributing guidelines](https://github.com/jellyfin/.github/blob/master/CONTRIBUTING.md) for further information.
-
-## Licence
-
-This plugins code and packages are distributed under the GPLv3 License. See [LICENSE](./LICENSE) for more information.
+This plugin is derived in spirit from
+[jellyfin/jellyfin-plugin-opensubtitles](https://github.com/jellyfin/jellyfin-plugin-opensubtitles).
+The namespace and branding have been changed; the HTTP protocol is compatible because
+Bazarr+'s External Integration endpoint implements an OpenSubtitles-compatible shape.

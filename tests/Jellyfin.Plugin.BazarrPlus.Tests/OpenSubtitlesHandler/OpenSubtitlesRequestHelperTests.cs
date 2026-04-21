@@ -1,7 +1,7 @@
 using System.IO;
 using Xunit;
 
-namespace Jellyfin.Plugin.OpenSubtitles.OpenSubtitlesHandler.Tests;
+namespace Jellyfin.Plugin.BazarrPlus.OpenSubtitlesHandler.Tests;
 
 public class OpenSubtitlesRequestHelperTests
 {

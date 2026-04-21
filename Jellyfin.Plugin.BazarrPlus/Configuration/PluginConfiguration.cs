@@ -1,24 +1,20 @@
 using MediaBrowser.Model.Plugins;
 
-namespace Jellyfin.Plugin.OpenSubtitles.Configuration;
+namespace Jellyfin.Plugin.BazarrPlus.Configuration;
 
 /// <summary>
-/// The plugin configuration.
+/// Plugin configuration.
 /// </summary>
 public class PluginConfiguration : BasePluginConfiguration
 {
     /// <summary>
-    /// Gets or sets the username.
+    /// Gets or sets the Bazarr+ base URL (e.g. http://bazarr.lavx.local:6767).
+    /// No trailing slash. The plugin appends "/api/v1/..." itself.
     /// </summary>
-    public string Username { get; set; } = string.Empty;
+    public string BazarrUrl { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the password.
+    /// Gets or sets the Bazarr+ compat API token (shown in Settings → External Integration).
     /// </summary>
-    public string Password { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the credentials are invalid.
-    /// </summary>
-    public bool CredentialsInvalid { get; set; } = false;
+    public string BazarrToken { get; set; } = string.Empty;
 }
