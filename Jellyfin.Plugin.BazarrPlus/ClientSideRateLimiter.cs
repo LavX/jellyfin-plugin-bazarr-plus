@@ -25,7 +25,14 @@ internal sealed class ClientSideRateLimitedHandler : DelegatingHandler
         : base(new SocketsHttpHandler
         {
             AutomaticDecompression = DecompressionMethods.All,
-            RequestHeaderEncodingSelector = (_, _) => Encoding.UTF8
+            RequestHeaderEncodingSelector = (_, _) => Encoding.UTF8,
+
+            // Bazarr+'s waitress WSGI server closes idle keep-alive connections
+            // unilaterally. Without these bounds, HttpClientFactory's long-lived
+            // handler reuses half-closed connections and surfaces a spurious
+            // "HttpIOException: The response ended prematurely (ResponseEnded)".
+            PooledConnectionLifetime = TimeSpan.FromSeconds(60),
+            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(5),
         })
     {
         _logger = logger;
