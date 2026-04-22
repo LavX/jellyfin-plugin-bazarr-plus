@@ -1,0 +1,1263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="color-scheme" content="light" />
+<title>BAZARR+ SUBTITLES / JELLYFIN PLUGIN / v1.0.0</title>
+<meta name="description" content="A Jellyfin subtitle provider plugin that proxies searches and downloads to a self-hosted Bazarr+ instance. Configure subtitle providers once in Bazarr+, use them from every media server on your LAN." />
+<link rel="preconnect" href="https://fonts.bunny.net" crossorigin />
+<link href="https://fonts.bunny.net/css?family=inter:400,700,900&amp;family=jetbrains-mono:400,700&amp;display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   BRUTALIST / SWISS GRID
+   pure black on pure white, one accent: #FFE600 (safety yellow)
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+html{background:var(--paper);color:var(--ink);-webkit-text-size-adjust:100%}
+body{
+  font-family:"Inter","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-weight:400;font-size:16.5px;line-height:1.5;letter-spacing:-0.005em;
+  background:var(--paper);color:var(--ink);
+  min-height:100vh;overflow-x:hidden;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+}
+:root{
+  --ink:#15181E;            /* warm near-black, not pure */
+  --ink-soft:#40454D;       /* secondary text */
+  --paper:#F5F1E8;          /* warm paper */
+  --paper-soft:#EBE5D6;     /* panel tint */
+  --acc:#F2C94C;            /* refined mustard, not safety-yellow */
+  --acc-dark:#B7932A;       /* accent hover/active */
+  --rule:2px solid var(--ink);
+  --hair:1px solid var(--ink);
+  --col:1fr;
+  --gutter:0px;
+  --pad:20px;
+}
+@media (min-width:720px){:root{--pad:32px}}
+@media (min-width:1100px){:root{--pad:48px}}
+
+/* ---------- reset-ish typography ---------- */
+h1,h2,h3,h4,p,dl,dt,dd,ul,ol,li,figure{margin:0;padding:0}
+ul,ol{list-style:none}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+code,kbd,pre,.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-weight:400}
+
+/* ---------- focus ring: loud, brutalist ---------- */
+:focus{outline:0}
+:focus-visible{
+  outline:4px solid var(--acc);
+  outline-offset:2px;
+  box-shadow:0 0 0 7px var(--ink);
+}
+
+/* ---------- skip link ---------- */
+.skip{
+  position:absolute;left:-9999px;top:0;
+  background:var(--ink);color:var(--paper);padding:12px 18px;
+  font-family:"JetBrains Mono",monospace;font-size:14px;letter-spacing:.05em;text-transform:uppercase;
+  z-index:100;
+}
+.skip:focus,.skip:focus-visible{left:0}
+
+/* ============================================================
+   THE GRID
+   ============================================================ */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(12,1fr);
+  column-gap:0;
+  padding:0 var(--pad);
+  border-left:var(--rule);
+  border-right:var(--rule);
+}
+.rule-t{border-top:var(--rule)}
+.rule-b{border-bottom:var(--rule)}
+.rule-l{border-left:var(--hair)}
+.rule-r{border-right:var(--hair)}
+
+/* ============================================================
+   TOP BAR
+   ============================================================ */
+.bar{
+  grid-column:1 / -1;
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  padding:14px 0;
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+}
+.bar .l{text-align:left}
+.bar .c{text-align:center;font-weight:700}
+.bar .r{text-align:right}
+.bar span + span{margin-left:14px}
+.dot{display:inline-block;width:10px;height:10px;background:var(--acc);border:1.5px solid var(--ink);vertical-align:middle;margin-right:6px;transform:translateY(-1px)}
+
+/* ============================================================
+   MASTHEAD
+   ============================================================ */
+.mast{grid-column:1 / -1;position:relative}
+.mast-inner{
+  display:grid;grid-template-columns:repeat(12,1fr);
+  padding:28px 0 0 0;
+}
+.mast .label{
+  grid-column:1 / -1;
+  font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  padding-bottom:10px;
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+}
+.mast h1{
+  grid-column:1 / -1;
+  font-weight:900;
+  font-size:clamp(48px,11vw,156px);
+  line-height:.86;
+  letter-spacing:-0.04em;
+  text-transform:uppercase;
+  margin:8px 0 0 0;
+  word-break:break-word;
+}
+.mast h1 .plus{color:var(--ink);background:var(--acc);padding:0 .05em;display:inline-block}
+.mast h1 .slash{color:var(--ink)}
+.mast .sub{
+  grid-column:1 / -1;
+  padding:22px 0 24px 0;
+  font-size:clamp(17px,2vw,22px);
+  font-weight:500;
+  line-height:1.45;
+  letter-spacing:-0.005em;
+  max-width:72ch;
+  color:var(--ink);
+}
+.mast .sub b{font-weight:800;background:var(--acc);padding:0 4px}
+
+/* ============================================================
+   MEGA CTA: huge copy-manifest block right under the masthead
+   ============================================================ */
+.mega-cta{
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  gap:28px;
+  margin:8px calc(-1 * var(--pad)) 18px calc(-1 * var(--pad));
+  padding:28px var(--pad) 30px var(--pad);
+  background:var(--acc);
+  color:var(--ink);
+  border-top:var(--rule);
+  border-bottom:var(--rule);
+  font:inherit;
+  text-align:left;
+  cursor:pointer;
+  transition:background .1s linear,color .1s linear;
+  position:relative;
+  width:calc(100% + 2 * var(--pad));
+}
+.mega-cta::after{
+  content:"";
+  position:absolute;left:0;top:0;height:100%;width:8px;
+  background:var(--ink);
+}
+.mega-cta:hover,.mega-cta:focus-visible{background:var(--ink);color:var(--paper)}
+.mega-cta:hover::after,.mega-cta:focus-visible::after{background:var(--acc)}
+.mega-cta.copied{background:var(--ink);color:var(--paper)}
+.mega-cta.copied::after{background:var(--acc)}
+
+.mega-cta-l{display:flex;flex-direction:column;gap:10px;min-width:0;padding-left:12px}
+.mega-cta-kicker{
+  font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  font-size:12px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;
+  opacity:.75;
+}
+.mega-cta-ttl{
+  font-weight:900;
+  font-size:clamp(34px,6.4vw,80px);
+  letter-spacing:-0.035em;line-height:.95;
+  text-transform:uppercase;
+}
+
+.mega-cta-r{
+  display:flex;flex-direction:column;align-items:flex-end;gap:12px;
+  min-width:0;
+}
+.mega-cta-url{
+  font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  font-size:13px;letter-spacing:.015em;
+  font-weight:500;word-break:break-all;opacity:.85;
+  max-width:40ch;text-align:right;line-height:1.4;
+}
+.mega-cta-kbd{display:inline-flex;gap:6px}
+.mega-cta-kbd .kbd{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:6px 10px;border:2px solid currentColor;
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:13px;letter-spacing:.06em;font-weight:700;min-width:30px;line-height:1;
+}
+@media (max-width:720px){
+  .mega-cta{grid-template-columns:1fr;gap:18px;padding:24px var(--pad) 26px var(--pad)}
+  .mega-cta-l{padding-left:10px}
+  .mega-cta-r{align-items:flex-start}
+  .mega-cta-url{text-align:left;max-width:none}
+}
+
+/* hero sketch panel */
+.sketch-wrap{
+  grid-column:1 / -1;
+  position:relative;
+  border-top:var(--rule);
+  border-bottom:var(--rule);
+  background:var(--paper);
+  height:clamp(220px,32vw,400px);
+  overflow:hidden;
+  margin:0 calc(-1 * var(--pad));
+  padding:0 var(--pad);
+}
+#sketch{position:absolute;inset:0;width:100%;height:100%;display:block}
+.sketch-label{
+  position:absolute;
+  bottom:0;left:0;
+  background:var(--ink);color:var(--paper);
+  padding:10px 14px 9px 14px;
+  font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  z-index:2;
+  border-right:var(--rule);border-top:var(--rule);
+}
+.sketch-label b{color:var(--acc);font-weight:700}
+.sketch-hint{
+  position:absolute;top:0;right:0;
+  background:var(--acc);color:var(--ink);
+  padding:10px 14px 9px 14px;
+  font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+  z-index:2;
+  border-left:var(--rule);border-bottom:var(--rule);
+}
+
+/* ============================================================
+   GENERIC SECTION
+   ============================================================ */
+.section-head{
+  grid-column:1 / -1;
+  display:grid;grid-template-columns:repeat(12,1fr);
+  padding:18px 0 14px 0;
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  align-items:end;
+}
+.section-head .sh-num{grid-column:1 / span 2;font-weight:700}
+.section-head .sh-ttl{grid-column:3 / span 7;font-weight:700;font-size:12px}
+.section-head .sh-meta{grid-column:10 / span 3;text-align:right;font-weight:400;opacity:.75}
+@media (max-width:720px){
+  .section-head .sh-num{grid-column:1 / span 4}
+  .section-head .sh-ttl{grid-column:5 / span 8}
+  .section-head .sh-meta{display:none}
+}
+
+/* ============================================================
+   WHAT IT DOES / ARCHITECTURE
+   ============================================================ */
+.what{
+  grid-column:1 / -1;
+  display:grid;grid-template-columns:repeat(12,1fr);
+  border-top:var(--rule);
+  column-gap:0;
+}
+.what-lead{
+  grid-column:1 / span 12;
+  padding:22px 18px 0 0;
+  border-bottom:var(--hair);
+  padding-bottom:18px;
+}
+.what-lead h2{
+  font-size:clamp(28px,5vw,56px);
+  font-weight:900;letter-spacing:-0.035em;line-height:.95;text-transform:uppercase;
+}
+.what-body{
+  grid-column:1 / span 12;
+  padding:20px 18px 24px 0;
+  display:flex;flex-direction:column;gap:14px;
+  max-width:72ch;
+}
+.what-body p{font-size:16px;line-height:1.55}
+.what-body p b{font-weight:900;background:var(--acc);padding:0 4px}
+.what-body .mono,
+.what-diag .mono{
+  font-weight:700;font-size:.9em;display:inline-block;background:var(--ink);color:var(--paper);padding:1px 6px;letter-spacing:.02em;
+}
+.what-body a.inl{
+  border-bottom:2px solid var(--ink);font-weight:700;
+}
+.what-body a.inl:hover,
+.what-body a.inl:focus-visible{background:var(--acc)}
+.what-diag{
+  grid-column:1 / span 12;
+  border-top:var(--rule);border-bottom:var(--rule);
+  background:var(--ink);color:var(--paper);
+  margin:0 calc(-1 * var(--pad));
+  padding:16px var(--pad) 20px var(--pad);
+  position:relative;
+}
+.what-diag-head{
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+  padding-bottom:10px;
+  border-bottom:1px solid var(--paper);
+  margin-bottom:12px;
+}
+.what-diag-head b{color:var(--acc);font-weight:700}
+.what-ascii{
+  font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  font-size:clamp(11px,1.3vw,14px);
+  line-height:1.5;
+  color:var(--paper);
+  white-space:pre;
+  overflow-x:auto;
+}
+@media (min-width:900px){
+  .what-lead{grid-column:1 / span 5;border-bottom:0;border-right:var(--rule);padding:22px 24px 22px 0;}
+  .what-body{grid-column:6 / span 7;padding:22px 0 22px 24px;}
+  .what-diag{grid-column:1 / -1;}
+}
+
+/* ============================================================
+   MANIFEST / COPY BLOCK
+   ============================================================ */
+.manifest{
+  grid-column:1 / -1;
+  display:grid;grid-template-columns:repeat(12,1fr);
+  border-top:var(--rule);
+}
+.manifest-lead{
+  grid-column:1 / span 12;
+  padding:18px 0 14px 0;
+}
+.manifest-lead h2{
+  font-size:clamp(28px,5vw,56px);
+  font-weight:900;letter-spacing:-0.035em;line-height:.95;text-transform:uppercase;
+}
+.manifest-lead p{
+  margin-top:10px;
+  font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.04em;text-transform:uppercase;max-width:760px;
+}
+.copybar{
+  grid-column:1 / span 12;
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:stretch;
+  border-top:var(--rule);
+  border-bottom:var(--rule);
+  min-height:92px;
+}
+@media (max-width:720px){
+  .copybar{grid-template-columns:1fr;}
+}
+.copy-url{
+  display:flex;align-items:center;
+  padding:18px 18px;
+  font-family:"JetBrains Mono",monospace;
+  font-size:clamp(13px,1.6vw,20px);
+  font-weight:700;
+  letter-spacing:-0.005em;
+  word-break:break-all;
+  background:var(--paper);color:var(--ink);
+  border-right:var(--rule);
+}
+@media (max-width:720px){.copy-url{border-right:0;border-bottom:var(--rule)}}
+.copy-btn{
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  background:var(--ink);color:var(--paper);
+  padding:0 28px;
+  font-family:"JetBrains Mono",monospace;
+  font-size:14px;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;
+  min-width:220px;
+  transition:background .08s linear,color .08s linear;
+}
+.copy-btn:hover,.copy-btn:focus-visible{background:var(--acc);color:var(--ink)}
+.copy-btn.copied{background:var(--acc);color:var(--ink)}
+.copy-btn .kbd{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:4px 8px;
+  border:1.5px solid currentColor;
+  font-size:11px;letter-spacing:.08em;
+  min-width:26px;
+  line-height:1;
+}
+.copy-btn .kbd + .kbd{margin-left:4px}
+.copy-btn-label{white-space:nowrap}
+
+.copy-ok{
+  grid-column:1 / span 12;
+  display:none;
+  padding:12px 18px;
+  background:var(--acc);
+  border-bottom:var(--rule);
+  font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+}
+.copy-ok.on{display:block}
+
+/* ============================================================
+   INSTALL: three steps
+   ============================================================ */
+.install{
+  grid-column:1 / -1;
+  display:grid;grid-template-columns:repeat(12,1fr);
+  border-top:var(--rule);
+}
+.step{
+  grid-column:span 12;
+  border-top:var(--hair);
+  padding:22px 18px 26px 18px;
+  position:relative;
+  background:var(--paper);
+}
+.step:first-child{border-top:0}
+@media (min-width:900px){
+  .step{grid-column:span 4;border-top:0;border-left:var(--rule);}
+  .step:first-child{border-left:0}
+}
+.step-num{
+  font-family:"JetBrains Mono",monospace;
+  font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+  display:inline-block;
+  background:var(--ink);color:var(--paper);
+  padding:6px 10px 5px 10px;
+  margin-bottom:16px;
+}
+.step h3{
+  font-weight:900;
+  font-size:clamp(22px,2.6vw,32px);
+  line-height:1;
+  letter-spacing:-0.03em;
+  text-transform:uppercase;
+  margin-bottom:14px;
+}
+.step p{
+  font-size:15px;line-height:1.4;max-width:38ch;
+}
+.step .path{
+  margin-top:14px;
+  font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.02em;
+  background:var(--ink);color:var(--paper);padding:8px 10px;display:inline-block;
+  word-break:break-all;
+}
+.step .path .arrow{color:var(--acc);padding:0 4px}
+.step em{
+  font-style:normal;background:var(--acc);padding:0 3px;
+}
+
+/* ============================================================
+   REQUIREMENTS
+   ============================================================ */
+.req{
+  grid-column:1 / -1;
+  display:grid;grid-template-columns:repeat(12,1fr);
+  border-top:var(--rule);
+}
+.req dl{
+  grid-column:1 / span 12;
+  display:grid;grid-template-columns:repeat(12,1fr);
+}
+.req .row{
+  grid-column:1 / -1;
+  display:grid;grid-template-columns:repeat(12,1fr);
+  border-top:var(--hair);
+  padding:18px 0;
+}
+.req .row:first-child{border-top:0}
+.req dt{
+  grid-column:1 / span 3;
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+  padding-right:12px;
+}
+.req dd{
+  grid-column:4 / span 9;
+  font-size:clamp(18px,2vw,24px);
+  font-weight:700;letter-spacing:-0.02em;line-height:1.15;
+}
+.req dd b{background:var(--acc);padding:0 4px;font-weight:900}
+.req dd .mono{font-weight:700;font-size:.85em;display:inline-block;background:var(--ink);color:var(--paper);padding:2px 6px;letter-spacing:.02em}
+.req .rd-why{
+  display:block;
+  margin-top:10px;
+  font-family:"Inter","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:14.5px;
+  font-weight:400;
+  line-height:1.55;
+  letter-spacing:normal;
+  color:var(--ink-soft);
+  max-width:64ch;
+  text-transform:none;
+}
+.req .rd-why .mono{font-weight:500;font-size:.95em;background:var(--paper-soft);color:var(--ink);padding:1px 5px;letter-spacing:.01em}
+@media (max-width:720px){
+  .req dt{grid-column:1 / -1;padding-bottom:6px}
+  .req dd{grid-column:1 / -1}
+}
+
+/* ============================================================
+   LINKS
+   ============================================================ */
+.links{
+  grid-column:1 / -1;
+  display:grid;grid-template-columns:repeat(12,1fr);
+  border-top:var(--rule);
+}
+.links ul{
+  grid-column:1 / span 12;
+  display:grid;grid-template-columns:repeat(12,1fr);
+}
+.links li{
+  grid-column:span 12;
+  border-top:var(--hair);
+}
+.links li:first-child{border-top:0}
+@media (min-width:900px){
+  .links li{grid-column:span 4;border-top:0;border-left:var(--hair)}
+  .links li:first-child{border-left:0}
+}
+.links a{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:14px;
+  padding:22px 18px;
+  min-height:120px;
+  transition:background .08s linear,color .08s linear;
+}
+.links a:hover,.links a:focus-visible{background:var(--ink);color:var(--paper)}
+.links a:hover .lnum,.links a:focus-visible .lnum{background:var(--paper);color:var(--ink)}
+.links a:hover .lgo,.links a:focus-visible .lgo{background:var(--acc);color:var(--ink)}
+.lnum{
+  font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.12em;font-weight:700;
+  background:var(--ink);color:var(--paper);padding:5px 8px;
+  align-self:start;
+}
+.lttl{
+  font-weight:900;font-size:clamp(20px,2.2vw,28px);
+  letter-spacing:-0.025em;line-height:1;text-transform:uppercase;
+}
+.lttl .desc{
+  display:block;margin-top:12px;
+  font-family:"Inter","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:15px;line-height:1.55;
+  font-weight:400;letter-spacing:normal;
+  text-transform:none;color:var(--ink-soft);
+  max-width:62ch;
+}
+.lttl .url{
+  display:block;margin-top:10px;
+  font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  font-size:12.5px;letter-spacing:.02em;
+  font-weight:500;text-transform:none;word-break:break-all;color:var(--ink);
+  opacity:.7;
+}
+.links a:hover .desc,.links a:focus-visible .desc{color:var(--paper);opacity:.85}
+.links a:hover .url,.links a:focus-visible .url{color:var(--paper);opacity:.8}
+.lgo{
+  font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+  padding:6px 10px;border:1.5px solid currentColor;
+  align-self:start;
+}
+
+/* ============================================================
+   PROVIDER MARQUEE
+   ============================================================ */
+.marquee{
+  grid-column:1 / -1;
+  border-top:var(--rule);border-bottom:var(--rule);
+  background:var(--ink);color:var(--paper);
+  overflow:hidden;white-space:nowrap;
+  padding:14px 0;
+  font-family:"JetBrains Mono",monospace;font-size:14px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+}
+.marquee-track{display:inline-block;animation:mq 38s linear infinite;padding-left:100%}
+.marquee-track span{padding:0 26px}
+.marquee-track b{color:var(--acc);font-weight:700}
+@keyframes mq{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){.marquee-track{animation:none;padding-left:0}}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.foot{
+  grid-column:1 / -1;
+  display:grid;grid-template-columns:repeat(12,1fr);
+  border-top:var(--rule);
+  padding:24px 0 32px 0;
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  gap:14px 0;
+}
+.foot .fa{grid-column:1 / span 6}
+.foot .fb{grid-column:7 / span 6;text-align:right}
+.foot b{font-weight:700}
+@media (max-width:720px){
+  .foot .fa,.foot .fb{grid-column:1 / -1;text-align:left}
+}
+
+/* ============================================================
+   UTIL
+   ============================================================ */
+.sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* ============================================================
+   API SURFACE TABLE (inside §02 diagram panel)
+   ============================================================ */
+.api-table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:16px;
+  font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  font-size:12px;
+  color:var(--paper);
+}
+.api-table caption{
+  text-align:left;
+  padding:0 0 10px 0;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+  color:var(--acc);
+}
+.api-table th,.api-table td{
+  padding:8px 10px;
+  border-top:1px solid rgba(245,241,232,.25);
+  vertical-align:top;
+  text-align:left;
+}
+.api-table thead th{
+  border-top:0;border-bottom:1px solid var(--paper);
+  font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+  padding-bottom:6px;
+}
+.api-table td.m{width:60px;font-weight:700;color:var(--acc)}
+.api-table td.p{width:auto;word-break:break-all}
+.api-table td.d{color:var(--paper);opacity:.88;line-height:1.45}
+@media (max-width:720px){
+  .api-table,.api-table thead,.api-table tbody,.api-table tr,.api-table th,.api-table td{display:block}
+  .api-table thead{display:none}
+  .api-table tr{border-top:1px solid rgba(245,241,232,.25);padding:10px 0}
+  .api-table td{border-top:0;padding:2px 0}
+  .api-table td.m{width:auto;margin-bottom:2px}
+}
+
+/* ============================================================
+   TROUBLESHOOTING
+   ============================================================ */
+.trbl{
+  grid-column:1 / -1;
+  display:grid;grid-template-columns:repeat(12,1fr);
+  border-top:var(--rule);
+}
+.trbl-row{
+  grid-column:1 / -1;
+  display:grid;grid-template-columns:repeat(12,1fr);
+  border-top:var(--hair);
+  padding:20px 0;
+  gap:8px 0;
+}
+.trbl-row:first-child{border-top:0}
+.trbl-code{
+  grid-column:1 / span 3;
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:12px;letter-spacing:.06em;font-weight:700;
+  padding-right:14px;
+}
+.trbl-code b{display:inline-block;background:var(--ink);color:var(--paper);padding:3px 8px;font-size:11px}
+.trbl-body{grid-column:4 / span 9}
+.trbl-body h4{
+  font-weight:800;font-size:18px;line-height:1.2;letter-spacing:-0.02em;
+  margin-bottom:6px;
+}
+.trbl-body p{
+  font-size:15.5px;line-height:1.55;
+  color:var(--ink-soft);
+  max-width:62ch;
+}
+.trbl-body p + p{margin-top:8px}
+.trbl-body .mono{
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:.92em;background:var(--paper-soft);padding:1px 6px;letter-spacing:.01em;color:var(--ink);
+}
+@media (max-width:720px){
+  .trbl-code{grid-column:1 / -1;padding-bottom:4px}
+  .trbl-body{grid-column:1 / -1}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- ======================================================= -->
+<!-- TOP BAR                                                  -->
+<!-- ======================================================= -->
+<header class="grid rule-t rule-b" role="banner">
+  <div class="bar" aria-label="Meta">
+    <div class="l"><span aria-hidden="true" class="dot"></span><span>Operational</span><span>Build 1.0.0</span></div>
+    <div class="c">BAZARR+ / JELLYFIN / SUBTITLES</div>
+    <div class="r"><span>2026.04.21</span><span>GPLv3</span></div>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ======================================================= -->
+<!-- MASTHEAD                                                 -->
+<!-- ======================================================= -->
+<section class="grid" aria-labelledby="h1">
+  <div class="mast">
+    <div class="mast-inner">
+      <div class="label">
+        <span>&sect; 01 &nbsp;&middot;&nbsp; Plugin &nbsp;&middot;&nbsp; One-Line</span>
+        <span>Filed 2026.04.21 &nbsp;&middot;&nbsp; Edition 01</span>
+      </div>
+      <h1 id="h1">Bazarr<span class="plus">+</span><br/>Sub<span class="slash">&shy;</span>titles<span class="plus" aria-hidden="true">.</span></h1>
+      <p class="sub">A <b>Jellyfin 10.11+</b> subtitle-provider plugin that proxies searches and downloads to a self-hosted <b>Bazarr+</b> instance over its OpenSubtitles-compatible REST API. Configure subtitle providers once in Bazarr+; reuse them from every media server on your LAN, without pasting credentials into each one.</p>
+    </div>
+
+    <button id="megaCta" type="button" class="mega-cta" aria-label="Copy Bazarr+ plugin manifest URL to clipboard" aria-describedby="megaCtaUrl">
+      <span class="mega-cta-l">
+        <span class="mega-cta-kicker">Add to Jellyfin</span>
+        <span class="mega-cta-ttl" id="megaCtaTtl">Copy Manifest URL</span>
+      </span>
+      <span class="mega-cta-r">
+        <span class="mega-cta-url" id="megaCtaUrl">LavX.github.io/jellyfin-plugin-bazarr-plus/manifest.json</span>
+        <span class="mega-cta-kbd" aria-hidden="true"><span class="kbd">&#8984;</span><span class="kbd">C</span></span>
+      </span>
+    </button>
+
+    <div class="sketch-wrap">
+      <div id="sketch" aria-hidden="true"></div>
+      <div class="sketch-hint" aria-hidden="true">LIVE</div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================= -->
+<!-- WHAT IT DOES                                             -->
+<!-- ======================================================= -->
+<section class="grid" aria-labelledby="h-what">
+  <div class="section-head">
+    <div class="sh-num">&sect; 02</div>
+    <div class="sh-ttl" id="h-what">What / Architecture</div>
+    <div class="sh-meta">One backend. Every media server.</div>
+  </div>
+
+  <div class="what">
+    <div class="what-lead">
+      <h2>Subtitle providers,<br/>configured once.</h2>
+    </div>
+    <div class="what-body">
+      <p><b>The problem.</b> Jellyfin ships native subtitle providers, each with its own credentials, its own rate-limit accounting, its own retry logic. Every provider you add is one more thing to configure inside Jellyfin. The same story plays out on every other media server on your LAN.</p>
+      <p><b>Bazarr+</b> is a self-hosted subtitle orchestration service. It aggregates multiple subtitle providers behind a single endpoint, exposes them over an OpenSubtitles-compatible REST API at <span class="mono">/api/v1/*</span>, centralises credentials and rate-limit budgets, caches search results, and fans requests out in parallel with dedup and ranking. Your Jellyfin library inherits every provider you&rsquo;ve configured in Bazarr+, with zero extra setup on the Jellyfin side.</p>
+      <p><b>This plugin</b> is the Jellyfin side of that conversation. Point it at your Bazarr+ URL, paste its token, and every provider enabled in Bazarr+&rsquo;s <span class="mono">Settings &rarr; Subtitles Sources</span> becomes one search away from inside Jellyfin&rsquo;s subtitle pipeline.</p>
+    </div>
+    <aside class="what-diag" aria-label="Request flow">
+      <div class="what-diag-head"><b>DATA FLOW</b> &nbsp; per subtitle search</div>
+      <pre class="what-ascii">
+JELLYFIN                    (media server, asks for subs)
+   &darr;  SubtitleSearchRequest
+   &darr;
+THIS PLUGIN                 (dll in Jellyfin plugins/)
+   &darr;  GET /api/v1/subtitles?imdb_id=&hellip;&amp;languages=&hellip;
+   &darr;  POST /api/v1/download  {file_id}
+   &darr;
+BAZARR+                     (compat endpoint)
+   &darr;  parallel fan-out
+   &darr;
+PROVIDERS                   OpenSubtitles &middot; subdl &middot; Addic7ed
+                            Podnapisi &middot; Napiprojekt &hellip;
+      </pre>
+      <table class="api-table" aria-label="API endpoints used by the plugin">
+        <caption>API Surface: endpoints the plugin calls from Jellyfin</caption>
+        <thead>
+          <tr><th>Method</th><th>Path</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="m">POST</td><td class="p">/api/v1/login</td><td class="d">Handshake. Returns a JWT and a user object with quota info.</td></tr>
+          <tr><td class="m">GET</td><td class="p">/api/v1/infos/languages</td><td class="d">Supported language list. Cached locally for subsequent searches.</td></tr>
+          <tr><td class="m">GET</td><td class="p">/api/v1/subtitles</td><td class="d">Unified search across all enabled Bazarr+ providers. Returns candidates ranked by match strength.</td></tr>
+          <tr><td class="m">POST</td><td class="p">/api/v1/download</td><td class="d">Resolves a search result into a signed, short-lived stream URL plus remaining quota counters.</td></tr>
+          <tr><td class="m">GET</td><td class="p">/api/v1/download/stream/&lt;tok&gt;</td><td class="d">Streams the actual subtitle bytes (SRT) back to Jellyfin&rsquo;s subtitle pipeline.</td></tr>
+        </tbody>
+      </table>
+    </aside>
+  </div>
+</section>
+
+<!-- ======================================================= -->
+<!-- MANIFEST URL + COPY                                      -->
+<!-- ======================================================= -->
+<section class="grid" aria-labelledby="h-manifest">
+  <div class="section-head">
+    <div class="sh-num">&sect; 03</div>
+    <div class="sh-ttl">Manifest / Repository URL</div>
+    <div class="sh-meta">Single source. One click. Copy.</div>
+  </div>
+
+  <div class="manifest">
+    <div class="manifest-lead">
+      <h2 id="h-manifest">Drop the URL.<br/>Point at your LAN. Done.</h2>
+      <p>Paste this into Jellyfin. It is the only URL you need.</p>
+    </div>
+
+    <div class="copybar" role="group" aria-label="Plugin manifest URL">
+      <div class="copy-url" id="manifestUrl">https://LavX.github.io/jellyfin-plugin-bazarr-plus/manifest.json</div>
+      <button id="copyBtn" class="copy-btn" type="button" aria-label="Copy manifest URL to clipboard">
+        <span class="copy-btn-label" id="copyLabel">COPY URL</span>
+        <span aria-hidden="true"><span class="kbd">&#8984;</span><span class="kbd">C</span></span>
+      </button>
+    </div>
+    <div class="copy-ok" id="copyOk" role="status">Copied. Paste into Jellyfin Dashboard &rarr; Plugins &rarr; Repositories.</div>
+  </div>
+</section>
+
+<!-- ======================================================= -->
+<!-- INSTALL: 3 STEPS                                         -->
+<!-- ======================================================= -->
+<section class="grid" aria-labelledby="h-install">
+  <div class="section-head">
+    <div class="sh-num">&sect; 04</div>
+    <div class="sh-ttl" id="h-install">Install / Three Steps</div>
+    <div class="sh-meta">T &plus; 60 seconds</div>
+  </div>
+
+  <div class="install" role="list">
+    <article class="step" role="listitem">
+      <div class="step-num">Step 01</div>
+      <h3>Add the repository</h3>
+      <p>Open the Jellyfin admin dashboard. Under <em>Plugins &rarr; Repositories</em>, use the <em>+</em> button. Jellyfin treats external repos exactly like the default catalog; you can add as many as you want.</p>
+      <div class="path">Dashboard<span class="arrow">&rarr;</span>Plugins<span class="arrow">&rarr;</span>Repositories<span class="arrow">&rarr;</span>+</div>
+    </article>
+    <article class="step" role="listitem">
+      <div class="step-num">Step 02</div>
+      <h3>Paste the manifest</h3>
+      <p>Name the repository anything you like (<em>Bazarr+ Subtitles</em> is fine). For URL, paste the manifest from <em>&sect; 03</em>. On save, Jellyfin fetches the JSON and the new plugin appears in the catalog within a few seconds.</p>
+      <div class="path">Paste URL<span class="arrow">&rarr;</span>Save</div>
+    </article>
+    <article class="step" role="listitem">
+      <div class="step-num">Step 03</div>
+      <h3>Install and configure</h3>
+      <p>Install <em>Bazarr+ Subtitles</em> from Jellyfin&rsquo;s plugin catalog and restart when prompted. Open <em>Dashboard &rarr; My Plugins &rarr; Bazarr+ Subtitles</em> and paste your Bazarr+ URL and API Token. Finally, for every library that should receive subtitles, go to <em>Dashboard &rarr; Libraries &rarr; [library]</em> and tick <em>Bazarr+ Subtitles</em> in the <em>Subtitle Downloaders</em> list.</p>
+      <div class="path">Install<span class="arrow">&rarr;</span>Paste URL + Token<span class="arrow">&rarr;</span>Enable on library</div>
+    </article>
+  </div>
+</section>
+
+<!-- ======================================================= -->
+<!-- MARQUEE                                                  -->
+<!-- ======================================================= -->
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    <span>OpenSubtitles</span><b>&bull;</b><span>Subscene</span><b>&bull;</b><span>Addic7ed</span><b>&bull;</b><span>Podnapisi</span><b>&bull;</b><span>TVSubtitles</span><b>&bull;</b><span>YIFY</span><b>&bull;</b><span>SubDL</span><b>&bull;</b><span>Titulky</span><b>&bull;</b><span>Napiprojekt</span><b>&bull;</b><span>BSPlayer</span><b>&bull;</b><span>LegendasDivx</span><b>&bull;</b><span>Wizdom</span><b>&bull;</b><span>Greeksubs</span><b>&bull;</b><span>ARGENTEAM</span><b>&bull;</b><span>Supersubtitles</span><b>&bull;</b><span>BAZARR+ FANS OUT</span><b>&bull;</b><span>JELLYFIN DOESN&rsquo;T CARE</span><b>&bull;</b>
+  </div>
+</div>
+
+<!-- ======================================================= -->
+<!-- REQUIREMENTS                                             -->
+<!-- ======================================================= -->
+<section class="grid" aria-labelledby="h-req">
+  <div class="section-head">
+    <div class="sh-num">&sect; 05</div>
+    <div class="sh-ttl" id="h-req">Requirements / Spec Sheet</div>
+    <div class="sh-meta">Self-hosted. Homelab. LAN.</div>
+  </div>
+
+  <div class="req">
+    <dl>
+      <div class="row">
+        <dt>Req 01 &middot; Host</dt>
+        <dd>Jellyfin <b>10.11+</b> <span class="mono">stable</span><span class="rd-why">The plugin targets the 10.11 plugin ABI (<span class="mono">net9.0</span>). It will not load into 10.10 or older.</span></dd>
+      </div>
+      <div class="row">
+        <dt>Req 02 &middot; Backend</dt>
+        <dd>Bazarr<span class="plus" style="background:var(--acc);padding:0 4px">+</span> <b>2.2+</b> reachable over HTTP(S) <span class="mono">LAN-ok</span><span class="rd-why">Needs the External Integration endpoint enabled. Self-signed TLS is fine on a private network; the plugin doesn&rsquo;t verify certificates on internal hosts.</span></dd>
+      </div>
+      <div class="row">
+        <dt>Req 03 &middot; Providers</dt>
+        <dd>At least <b>one provider</b> enabled in Bazarr+ <span class="mono">Settings &rarr; Subtitles Sources</span><span class="rd-why">Bazarr+ is the thing that actually talks to OpenSubtitles / subdl / Addic7ed / etc. If nothing is enabled there, searches return zero results.</span></dd>
+      </div>
+      <div class="row">
+        <dt>Req 04 &middot; Token</dt>
+        <dd>Bazarr+ <b>API Token</b> pasted into the plugin config<span class="rd-why">Shown in Bazarr+ Settings &rarr; External Integration. The plugin sends it as the <span class="mono">Api-Key</span> header on every request.</span></dd>
+      </div>
+    </dl>
+  </div>
+</section>
+
+<!-- ======================================================= -->
+<!-- LINKS                                                    -->
+<!-- ======================================================= -->
+<section class="grid" aria-labelledby="h-links">
+  <div class="section-head">
+    <div class="sh-num">&sect; 06</div>
+    <div class="sh-ttl" id="h-links">Source &amp; Related Projects</div>
+    <div class="sh-meta">Plugin &middot; Backend &middot; Stack</div>
+  </div>
+
+  <nav class="links" aria-label="Project links">
+    <ul>
+      <li>
+        <a href="https://github.com/LavX/jellyfin-plugin-bazarr-plus" rel="noopener">
+          <span class="lnum">06.1</span>
+          <span class="lttl">This Plugin<span class="desc">A C# subtitle provider for Jellyfin 10.11+. Ships a single DLL, proxies searches and downloads to Bazarr+, and integrates natively with Jellyfin&rsquo;s subtitle pipeline so results appear alongside built-in providers.</span><span class="url">github.com/LavX/jellyfin-plugin-bazarr-plus</span></span>
+          <span class="lgo">GIT &rarr;</span>
+        </a>
+      </li>
+      <li>
+        <a href="https://github.com/LavX/bazarr" rel="noopener">
+          <span class="lnum">06.2</span>
+          <span class="lttl">Bazarr+<span class="desc">Self-hosted subtitle orchestration backend. Aggregates OpenSubtitles.com, subdl, Addic7ed, Podnapisi, Napiprojekt and more behind a single OpenSubtitles-compatible REST endpoint. Handles provider auth, rate-limit budgets, parallel fan-out, caching, and ranking. The server this plugin talks to for every Jellyfin subtitle search.</span><span class="url">github.com/LavX/bazarr</span></span>
+          <span class="lgo">GIT &rarr;</span>
+        </a>
+      </li>
+      <li>
+        <a href="https://github.com/LavX/arrstack" rel="noopener">
+          <span class="lnum">06.3</span>
+          <span class="lttl">arrstack<span class="desc">A full media-server homelab in docker-compose. Ties Jellyfin (streaming), Bazarr+ (subtitles), Sonarr (TV), Radarr (movies), Prowlarr (indexers) and qBittorrent (download client) together with shared networking, Traefik/Caddy routing, and healthchecks. The whole stack from library import to subtitle delivery.</span><span class="url">github.com/LavX/arrstack</span></span>
+          <span class="lgo">GIT &rarr;</span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+</section>
+
+<!-- ======================================================= -->
+<!-- TROUBLESHOOTING                                          -->
+<!-- ======================================================= -->
+<section class="grid" aria-labelledby="h-trbl">
+  <div class="section-head">
+    <div class="sh-num">&sect; 07</div>
+    <div class="sh-ttl" id="h-trbl">Troubleshooting</div>
+    <div class="sh-meta">When the wire goes dark</div>
+  </div>
+
+  <div class="trbl">
+    <div class="trbl-row">
+      <div class="trbl-code"><b>401</b> &nbsp; UNAUTHORIZED</div>
+      <div class="trbl-body">
+        <h4>API token mismatch</h4>
+        <p>The Bazarr+ token pasted into the plugin doesn&rsquo;t match the one in Bazarr+&rsquo;s <span class="mono">Settings &rarr; External Integration</span>. Regenerate the token in Bazarr+ and paste it back; the plugin re-authenticates on the next search.</p>
+      </div>
+    </div>
+    <div class="trbl-row">
+      <div class="trbl-code"><b>503</b> &nbsp; AT STREAM</div>
+      <div class="trbl-body">
+        <h4>Upstream provider fetch failed</h4>
+        <p>Search returned results but <span class="mono">/download/stream/&hellip;</span> returned 503. That&rsquo;s Bazarr+&rsquo;s upstream provider call failing: missing credentials, rate-limited, or the provider itself is down. Check Bazarr+ logs for the real error.</p>
+      </div>
+    </div>
+    <div class="trbl-row">
+      <div class="trbl-code"><b>200</b> &nbsp; EMPTY RESULTS</div>
+      <div class="trbl-body">
+        <h4>No providers enabled</h4>
+        <p>Searches succeed but return zero subtitles. Almost always means Bazarr+ has no providers enabled. Open Bazarr+&rsquo;s <span class="mono">Settings &rarr; Subtitles Sources</span> and enable at least one (OpenSubtitles.com, subdl, Podnapisi, etc.); a background re-index may be needed before results flow.</p>
+      </div>
+    </div>
+    <div class="trbl-row">
+      <div class="trbl-code"><b>HOST</b> &nbsp; UNREACHABLE</div>
+      <div class="trbl-body">
+        <h4>Plugin can&rsquo;t see Bazarr+</h4>
+        <p>If Jellyfin runs in Docker and Bazarr+ runs on the host, <span class="mono">localhost</span> and <span class="mono">127.0.0.1</span> point at Jellyfin&rsquo;s own container, not Bazarr+. Use the LAN IP, the host&rsquo;s <span class="mono">host.docker.internal</span>, or place both containers on the same docker network and use the service name.</p>
+        <p>Self-signed TLS works on the LAN; the plugin does not enforce certificate verification against internal hosts.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ======================================================= -->
+<!-- FOOTER                                                   -->
+<!-- ======================================================= -->
+<footer class="grid" role="contentinfo">
+  <div class="foot">
+    <div class="fa">
+      <b>COLOPHON</b> &nbsp; fork of jellyfin-plugin-opensubtitles &middot; GPLv3
+    </div>
+    <div class="fb">
+      <b>META</b> No trackers &middot; No analytics &middot; Self-hosted &middot; 2026
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/p5@1.11.2/lib/p5.min.js" defer></script>
+<script>
+/* ============================================================
+   COPY-TO-CLIPBOARD
+   ============================================================ */
+(function(){
+  var URL_ = 'https://LavX.github.io/jellyfin-plugin-bazarr-plus/manifest.json';
+  var btn = document.getElementById('copyBtn');
+  var lbl = document.getElementById('copyLabel');
+  var ok  = document.getElementById('copyOk');
+  var urlEl = document.getElementById('manifestUrl');
+  var megaBtn = document.getElementById('megaCta');
+  var megaTtl = document.getElementById('megaCtaTtl');
+  var megaTtlOrig = megaTtl ? megaTtl.textContent : '';
+  var t;
+
+  function flash(){
+    btn.classList.add('copied');
+    lbl.textContent = 'COPIED';
+    ok.classList.add('on');
+    if (megaBtn) megaBtn.classList.add('copied');
+    if (megaTtl) megaTtl.textContent = 'Copied. Paste in Jellyfin.';
+    clearTimeout(t);
+    t = setTimeout(function(){
+      btn.classList.remove('copied');
+      lbl.textContent = 'COPY URL';
+      ok.classList.remove('on');
+      if (megaBtn) megaBtn.classList.remove('copied');
+      if (megaTtl) megaTtl.textContent = megaTtlOrig;
+    }, 2500);
+  }
+
+  function fallback(text){
+    try{
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly','');
+      ta.style.position='fixed';ta.style.top='0';ta.style.left='0';ta.style.opacity='0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      return true;
+    }catch(e){return false;}
+  }
+
+  function doCopy(){
+    if(navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(URL_).then(flash, function(){
+        if(fallback(URL_)) flash();
+      });
+    }else{
+      if(fallback(URL_)) flash();
+    }
+  }
+
+  btn.addEventListener('click', doCopy);
+  if (megaBtn) megaBtn.addEventListener('click', doCopy);
+
+  // Click on the URL itself also copies
+  urlEl.style.cursor = 'copy';
+  urlEl.setAttribute('role','button');
+  urlEl.setAttribute('tabindex','0');
+  urlEl.setAttribute('aria-label','Copy manifest URL');
+  urlEl.addEventListener('click', doCopy);
+  urlEl.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' || e.key === ' '){e.preventDefault();doCopy();}
+  });
+
+  // Keyboard: Cmd/Ctrl+C copies the manifest URL, but only when the user
+  // has no text selected and focus isn't in an input. Matches the ⌘C kbd hint
+  // shown on the mega CTA and the smaller copy button. Native copy behaviour
+  // (copy selected text) always wins.
+  document.addEventListener('keydown', function(e){
+    if (!(e.metaKey || e.ctrlKey) || (e.key !== 'c' && e.key !== 'C')) return;
+    var tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    var sel = window.getSelection && window.getSelection().toString();
+    if (sel && sel.length) return;
+    e.preventDefault();
+    doCopy();
+  });
+})();
+
+/* ============================================================
+   P5.JS SKETCH: SOL-LEWITT-STYLE SUBDIVISION GRID
+   Rule-based, disciplined. Grid of rectangles that subdivide
+   and recombine; the cell nearest the cursor erupts with a
+   sub-grid of diagonals. Monochrome + single yellow accent.
+   ============================================================ */
+window.addEventListener('load', function(){
+  if (typeof p5 === 'undefined') return;
+  var host = document.getElementById('sketch');
+  if (!host) return;
+
+  var sketch = function(p){
+    var W=0,H=0;
+    var cols=16, rows=6;
+    var cells=[];
+    var t0=0;
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var INK   = '#15181E';
+    var PAPER = '#F5F1E8';
+    var ACC   = '#F2C94C';
+
+    function buildCells(){
+      cells = [];
+      // aspect-driven col/row counts
+      var base = Math.max(60, Math.min(120, W/14));
+      cols = Math.max(8, Math.round(W / base));
+      rows = Math.max(3, Math.round(H / (base*0.9)));
+      var cw = W/cols, ch = H/rows;
+      for(var j=0;j<rows;j++){
+        for(var i=0;i<cols;i++){
+          // deterministic pseudo-random rule per cell
+          var seed = (i*131 + j*997);
+          var r = (Math.sin(seed)*10000); r = r - Math.floor(r);
+          cells.push({
+            i:i,j:j,
+            x:i*cw,y:j*ch,w:cw,h:ch,
+            r:r,
+            rule: Math.floor(r*6), // 0..5 different rules
+            phase: (r*Math.PI*2)
+          });
+        }
+      }
+    }
+
+    p.setup = function(){
+      var rect = host.getBoundingClientRect();
+      W = Math.max(320, rect.width|0);
+      H = Math.max(180, rect.height|0);
+      var c = p.createCanvas(W,H);
+      c.parent(host);
+      p.pixelDensity(Math.min(window.devicePixelRatio||1, 2));
+      p.noSmooth(); // hard edges
+      buildCells();
+      t0 = p.millis();
+      if (reduceMotion) p.noLoop();
+    };
+
+    p.windowResized = function(){
+      var rect = host.getBoundingClientRect();
+      var nW = Math.max(320, rect.width|0);
+      var nH = Math.max(180, rect.height|0);
+      if (nW===W && nH===H) return;
+      W = nW; H = nH;
+      p.resizeCanvas(W,H);
+      buildCells();
+    };
+
+    function drawRule(c, tt, active, strength){
+      // Coordinates
+      var x=c.x, y=c.y, w=c.w, h=c.h;
+      var pad = 0;
+      p.push();
+      p.translate(x,y);
+
+      // background fill
+      if(active && strength>0.6){
+        p.noStroke();
+        p.fill(ACC);
+        p.rect(0,0,w,h);
+        p.stroke(INK); p.noFill(); p.strokeWeight(1.5);
+        p.rect(0.75,0.75,w-1.5,h-1.5);
+      }else{
+        p.stroke(INK); p.strokeWeight(0.75); p.noFill();
+        p.rect(0.5,0.5,w-1,h-1);
+      }
+
+      // rule-based marks
+      var r = c.rule;
+      var phase = c.phase + tt*0.6;
+      p.stroke(INK);
+      p.strokeWeight(1.2);
+
+      if (r===0){
+        // vertical bars
+        var n = 3 + Math.floor((Math.sin(phase)+1)*2);
+        for(var k=1;k<n;k++){
+          var xx = (w/n)*k;
+          p.line(xx, 2, xx, h-2);
+        }
+      } else if (r===1){
+        // horizontal bars
+        var n1 = 2 + Math.floor((Math.cos(phase)+1)*2);
+        for(var k1=1;k1<n1;k1++){
+          var yy = (h/n1)*k1;
+          p.line(2, yy, w-2, yy);
+        }
+      } else if (r===2){
+        // diagonal NW-SE
+        var steps = 5 + Math.floor((Math.sin(phase*0.7)+1)*3);
+        for(var s=0;s<steps;s++){
+          var f = s/steps;
+          p.line(w*f, 0, 0, h*f);
+          p.line(w, h*f, w*(1-f), h);
+        }
+      } else if (r===3){
+        // diagonal NE-SW
+        var steps2 = 5 + Math.floor((Math.cos(phase*0.7)+1)*3);
+        for(var s2=0;s2<steps2;s2++){
+          var f2 = s2/steps2;
+          p.line(w*(1-f2), 0, w, h*f2);
+          p.line(0, h*(1-f2), w*f2, h);
+        }
+      } else if (r===4){
+        // concentric rectangles subdividing
+        var layers = 2 + Math.floor((Math.sin(phase)+1)*1.5);
+        p.noFill();
+        for(var l=1;l<=layers;l++){
+          var inset = (Math.min(w,h)/ (layers+1))*l*0.5;
+          p.rect(inset, inset, w-2*inset, h-2*inset);
+        }
+      } else {
+        // big solid square centered, pulsing
+        var size = Math.min(w,h)*(0.35 + 0.25*(Math.sin(phase)*0.5+0.5));
+        p.noStroke();
+        p.fill(INK);
+        p.rect(w/2 - size/2, h/2 - size/2, size, size);
+      }
+
+      // yellow accent dot in some cells
+      if ((c.i + c.j) % 7 === 0 && !active){
+        p.noStroke(); p.fill(ACC);
+        var d = Math.min(w,h)*0.18;
+        p.rect(w-d-3, 3, d, d);
+        p.stroke(INK); p.noFill(); p.strokeWeight(1);
+        p.rect(w-d-2.5, 3.5, d-1, d-1);
+      }
+
+      p.pop();
+    }
+
+    p.draw = function(){
+      p.background(PAPER);
+      var tt = (p.millis() - t0) / 1000;
+
+      // mouse in canvas space; fall back to a slow auto-sweep
+      var mx = p.mouseX, my = p.mouseY;
+      var inside = mx>=0 && my>=0 && mx<=W && my<=H;
+      if(!inside || reduceMotion){
+        mx = W*(0.5 + 0.35*Math.sin(tt*0.35));
+        my = H*(0.5 + 0.35*Math.cos(tt*0.45));
+      }
+
+      // proximity-based activation
+      var maxD = Math.hypot(W,H)*0.28;
+
+      for(var k=0;k<cells.length;k++){
+        var c = cells[k];
+        var cx = c.x + c.w/2;
+        var cy = c.y + c.h/2;
+        var d = Math.hypot(mx-cx, my-cy);
+        var strength = Math.max(0, 1 - d/maxD);
+        var active = strength > 0.2;
+        drawRule(c, tt, active, strength);
+      }
+
+      // Hard outer frame (discipline)
+      p.noFill(); p.stroke(INK); p.strokeWeight(3);
+      p.rect(1.5,1.5,W-3,H-3);
+
+      // Corner registration marks
+      p.stroke(INK); p.strokeWeight(2);
+      var m=10;
+      p.line(0,m,m,m); p.line(m,0,m,m);
+      p.line(W-m,0,W-m,m); p.line(W,m,W-m,m);
+      p.line(0,H-m,m,H-m); p.line(m,H,m,H-m);
+      p.line(W-m,H,W-m,H-m); p.line(W,H-m,W-m,H-m);
+    };
+  };
+
+  new p5(sketch);
+});
+</script>
+</body>
+</html>
