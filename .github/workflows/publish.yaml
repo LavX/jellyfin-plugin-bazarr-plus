@@ -2,17 +2,85 @@ name: '🚀 Publish Plugin'
 
 on:
   release:
-    types:
-      - released
+    types: [released]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish (e.g. v1.0.1)'
+        required: true
+
+permissions:
+  contents: write
 
 jobs:
-  call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/publish.yaml@master
-    with:
-      version: ${{ github.event.release.tag_name }}
-      is-unstable: ${{ github.event.release.prerelease }}
-    secrets:
-      deploy-host: ${{ secrets.REPO_HOST }}
-      deploy-user: ${{ secrets.REPO_USER }}
-      deploy-key: ${{ secrets.REPO_KEY }}
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact_path: ${{ steps.jprm.outputs.artifact }}
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Build plugin via JPRM
+        id: jprm
+        uses: oddstr13/jellyfin-plugin-repository-manager@v1.1.1
+        with:
+          dotnet-target: net9.0
+          version: ${{ env.TAG }}
+      - name: Attach zip to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$TAG" "${{ steps.jprm.outputs.artifact }}" --clobber --repo "${{ github.repository }}"
+
+  publish-manifest:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      PAGES_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+    steps:
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install JPRM
+        run: pip install jellyfin-plugin-repository-manager
+      - name: Download release zip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir zip
+          gh release download "$TAG" --repo "${{ github.repository }}" --pattern '*.zip' --dir zip
+      - name: Initialize manifest if missing
+        working-directory: gh-pages
+        run: |
+          [ -f manifest.json ] || echo '[]' > manifest.json
+      - name: Add version to manifest
+        working-directory: gh-pages
+        run: |
+          ZIP=$(ls ../zip/*.zip | head -1)
+          ZIP_NAME=$(basename "$ZIP")
+          PLUGIN_URL="https://github.com/${{ github.repository }}/releases/download/$TAG/$ZIP_NAME"
+          jprm --verbosity=debug repo add \
+            --url "$PAGES_URL" \
+            --plugin-url "$PLUGIN_URL" \
+            . "$ZIP"
+      - name: Commit and push
+        working-directory: gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          if git diff --cached --quiet; then
+            echo "manifest.json unchanged; skipping commit"
+          else
+            git commit -m "publish: ${{ env.TAG }}"
+            git push
+          fi
