@@ -1,1 +1,21 @@
-[]
+[
+    {
+        "guid": "3e94f7ec-acca-42b4-ac3b-15a8cf446ba9",
+        "name": "Bazarr+ Subtitles",
+        "description": "Connect to a self-hosted Bazarr+ server to search and download subtitles across all configured providers via a single endpoint. Requires a Bazarr+ v2.2.0+ instance with the External Integration endpoint enabled.",
+        "overview": "Fetch subtitles from a Bazarr+ instance via the OpenSubtitles-compatible REST endpoint",
+        "owner": "LavX",
+        "category": "Subtitles",
+        "versions": [
+            {
+                "version": "1.0.0.0",
+                "changelog": "- Initial fork from jellyfin-plugin-opensubtitles\n- Retargeted at Bazarr+ compat endpoint\n- Independent reimplementation of OpenSubtitles REST protocol",
+                "targetAbi": "10.11.0.0",
+                "sourceUrl": "https://github.com/LavX/jellyfin-plugin-bazarr-plus/releases/download/1.0.0/bazarr-subtitles_1.0.0.0.zip",
+                "checksum": "57d58688c5da7739f8be5aca5b53f6b7",
+                "timestamp": "2026-04-22T01:31:21Z"
+            }
+        ],
+        "imageUrl": ""
+    }
+]
