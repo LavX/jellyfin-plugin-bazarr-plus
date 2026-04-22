@@ -8,7 +8,7 @@ namespace Jellyfin.Plugin.BazarrPlus.Configuration;
 public class PluginConfiguration : BasePluginConfiguration
 {
     /// <summary>
-    /// Gets or sets the Bazarr+ base URL (e.g. http://bazarr.lavx.local:6767).
+    /// Gets or sets the Bazarr+ base URL (e.g. http://bazarr.local:6767).
     /// No trailing slash. The plugin appends "/api/v1/..." itself.
     /// </summary>
     public string BazarrUrl { get; set; } = string.Empty;
