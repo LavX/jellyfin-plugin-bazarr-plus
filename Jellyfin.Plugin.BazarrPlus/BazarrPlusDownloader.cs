@@ -23,7 +23,8 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Plugin.BazarrPlus;
 
 /// <summary>
-/// The open subtitle downloader.
+/// Subtitle provider that proxies searches and downloads through a Bazarr+
+/// instance's OpenSubtitles-compatible REST endpoint.
 /// </summary>
 public class BazarrPlusDownloader : ISubtitleProvider
 {
@@ -250,14 +251,14 @@ public class BazarrPlusDownloader : ISubtitleProvider
                 // this shouldn't happen?
                 if (_login.User.RemainingDownloads <= 0)
                 {
-                    _logger.LogError("OpenSubtitles download limit reached");
-                    throw new RateLimitExceededException("OpenSubtitles download limit reached");
+                    _logger.LogError("Bazarr+ download limit reached");
+                    throw new RateLimitExceededException("Bazarr+ download limit reached");
                 }
             }
             else
             {
-                _logger.LogError("OpenSubtitles download limit reached");
-                throw new RateLimitExceededException("OpenSubtitles download limit reached");
+                _logger.LogError("Bazarr+ download limit reached");
+                throw new RateLimitExceededException("Bazarr+ download limit reached");
             }
         }
 
@@ -299,8 +300,8 @@ public class BazarrPlusDownloader : ISubtitleProvider
                         _login.User.RemainingDownloads = 0;
                     }
 
-                    _logger.LogError("OpenSubtitles download limit reached");
-                    throw new RateLimitExceededException("OpenSubtitles download limit reached");
+                    _logger.LogError("Bazarr+ download limit reached");
+                    throw new RateLimitExceededException("Bazarr+ download limit reached");
                 }
 
                 case HttpStatusCode.Unauthorized:
@@ -346,7 +347,7 @@ public class BazarrPlusDownloader : ISubtitleProvider
             var additionalMsg = string.Empty;
             if (res.Code == HttpStatusCode.OK && string.IsNullOrWhiteSpace(res.Body))
             {
-                additionalMsg = " - this is most likely a broken subtitle, report at opensubtitles.com/contact and make sure to include the id";
+                additionalMsg = " - most likely a broken subtitle; check Bazarr+ logs for this file_id";
                 if (!_badSubtitleIds.Contains(fileId))
                 {
                     _badSubtitleIds.Add(fileId);

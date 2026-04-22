@@ -9,10 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Web\opensubtitles.html" />
-    <None Remove="Web\opensubtitles.js" />
-    <EmbeddedResource Include="Web\opensubtitles.html" />
-    <EmbeddedResource Include="Web\opensubtitles.js" />
+    <None Remove="Web\bazarrplus.html" />
+    <None Remove="Web\bazarrplus.js" />
+    <EmbeddedResource Include="Web\bazarrplus.html" />
+    <EmbeddedResource Include="Web\bazarrplus.js" />
   </ItemGroup>
 
   <ItemGroup>
