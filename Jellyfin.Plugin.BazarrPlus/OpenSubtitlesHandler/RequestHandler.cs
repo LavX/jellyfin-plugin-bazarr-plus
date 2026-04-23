@@ -52,7 +52,14 @@ public static class RequestHandler
         bool isFullUrl = false)
     {
         headers ??= new Dictionary<string, string>();
-        headers.TryAdd("Api-Key", GetApiToken());
+
+        // Only attach the Api-Key when talking to the configured Bazarr+ host.
+        // /download returns a link that may live on an external host (pre-signed URL);
+        // forwarding the key there leaks it and some hosts reject unknown auth headers.
+        if (!isFullUrl)
+        {
+            headers.TryAdd("Api-Key", GetApiToken());
+        }
 
         var url = isFullUrl ? endpoint : GetBaseApiUrl() + endpoint;
         var response = await OpenSubtitlesRequestHelper.Instance!.SendRequestAsync(url, method, body, headers, cancellationToken).ConfigureAwait(false);
@@ -104,7 +111,7 @@ public static class RequestHandler
         {
             url.Append(HttpUtility.UrlEncode(key.ToLowerInvariant()))
                 .Append('=')
-                .Append(HttpUtility.UrlEncode(value.ToLowerInvariant()))
+                .Append(HttpUtility.UrlEncode(value))
                 .Append('&');
         }
 
