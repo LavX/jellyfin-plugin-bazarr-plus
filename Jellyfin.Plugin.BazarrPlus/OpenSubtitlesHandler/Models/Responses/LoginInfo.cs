@@ -27,6 +27,10 @@ public class LoginInfo
     /// <summary>
     /// Gets the expiration date.
     /// </summary>
+    /// <remarks>
+    /// A malformed or otherwise unparseable token resolves to <see cref="DateTime.MinValue"/>,
+    /// which callers interpret as "already expired" and triggers a fresh login.
+    /// </remarks>
     [JsonIgnore]
     public DateTime ExpirationDate
     {
@@ -37,18 +41,48 @@ public class LoginInfo
                 return _expirationDate.Value;
             }
 
-            if (string.IsNullOrWhiteSpace(Token))
-            {
-                return DateTime.MinValue;
-            }
-
-            var part = Token.Split('.')[1];
-            part = part.PadRight(part.Length + ((4 - (part.Length % 4)) % 4), '=');
-            part = Encoding.UTF8.GetString(Convert.FromBase64String(part));
-
-            var sec = JsonSerializer.Deserialize<JWTPayload>(part)?.Exp ?? 0;
-            _expirationDate = DateTimeOffset.FromUnixTimeSeconds(sec).UtcDateTime;
+            _expirationDate = ParseExpiration(Token);
             return _expirationDate.Value;
         }
+    }
+
+    private static DateTime ParseExpiration(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return DateTime.MinValue;
+        }
+
+        var segments = token.Split('.');
+        if (segments.Length < 3)
+        {
+            return DateTime.MinValue;
+        }
+
+        try
+        {
+            var payload = Encoding.UTF8.GetString(Base64UrlDecode(segments[1]));
+            var sec = JsonSerializer.Deserialize<JWTPayload>(payload)?.Exp ?? 0;
+            return DateTimeOffset.FromUnixTimeSeconds(sec).UtcDateTime;
+        }
+        catch (FormatException)
+        {
+            return DateTime.MinValue;
+        }
+        catch (JsonException)
+        {
+            return DateTime.MinValue;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return DateTime.MinValue;
+        }
+    }
+
+    private static byte[] Base64UrlDecode(string input)
+    {
+        var s = input.Replace('-', '+').Replace('_', '/');
+        s = s.PadRight(s.Length + ((4 - (s.Length % 4)) % 4), '=');
+        return Convert.FromBase64String(s);
     }
 }
