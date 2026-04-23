@@ -104,6 +104,20 @@ public class BazarrPlusDownloader : ISubtitleProvider
         }
 
         var language = await GetLanguage(request.TwoLetterISOLanguageName, request.MediaPath, cancellationToken).ConfigureAwait(false);
+        if (language is null)
+        {
+            return new[]
+            {
+                new RemoteSubtitleInfo
+                {
+                    Name = string.Format(CultureInfo.InvariantCulture, "Language '{0}' is not supported by Bazarr+", request.TwoLetterISOLanguageName),
+                    ProviderName = Name,
+                    Format = "srt",
+                    Id = "unsupported",
+                    Comment = "This language is not available in any of the configured subtitle providers",
+                }
+            };
+        }
 
         string? hash = null;
         if (!Path.GetExtension(request.MediaPath).Equals(".strm", StringComparison.OrdinalIgnoreCase))
@@ -138,26 +152,25 @@ public class BazarrPlusDownloader : ISubtitleProvider
             }
         }
 
-        // If we have the IMDb ID we use that, otherwise query with the details
         if (imdbId != 0)
         {
             options.Add("imdb_id", imdbId.ToString(CultureInfo.InvariantCulture));
         }
-        else
+
+        // Always send the filename so Bazarr can score by release-string match,
+        // and always send season/episode so results include correct metadata.
+        options.Add("query", Path.GetFileName(request.MediaPath));
+
+        if (request.ContentType == VideoContentType.Episode)
         {
-            options.Add("query", Path.GetFileName(request.MediaPath));
-
-            if (request.ContentType == VideoContentType.Episode)
+            if (request.ParentIndexNumber.HasValue)
             {
-                if (request.ParentIndexNumber.HasValue)
-                {
-                    options.Add("season_number", request.ParentIndexNumber.Value.ToString(CultureInfo.InvariantCulture));
-                }
+                options.Add("season_number", request.ParentIndexNumber.Value.ToString(CultureInfo.InvariantCulture));
+            }
 
-                if (request.IndexNumber.HasValue)
-                {
-                    options.Add("episode_number", request.IndexNumber.Value.ToString(CultureInfo.InvariantCulture));
-                }
+            if (request.IndexNumber.HasValue)
+            {
+                options.Add("episode_number", request.IndexNumber.Value.ToString(CultureInfo.InvariantCulture));
             }
         }
 
@@ -193,26 +206,26 @@ public class BazarrPlusDownloader : ISubtitleProvider
         return searchResponse.Data
             .Where(x => BadSubtitleFilter(x) && MediaFilter(x) && MatchFilter(x))
             .OrderByDescending(x => x.Attributes!.MovieHashMatch ?? false)
-            .ThenByDescending(x => x.Attributes!.DownloadCount)
             .ThenByDescending(x => x.Attributes!.Ratings)
             .ThenByDescending(x => x.Attributes!.FromTrusted)
+            .ThenByDescending(x => x.Attributes!.DownloadCount)
             .Select(i => new RemoteSubtitleInfo
             {
                 Author = i.Attributes!.Uploader?.Name,
-                Comment = i.Attributes.Comments,
-                CommunityRating = i.Attributes.Ratings,
-                DownloadCount = i.Attributes.DownloadCount,
+                Comment = FormatComment(i.Attributes.Uploader?.Name, i.Attributes.Provider, i.Attributes.Files[0].FileName),
+                CommunityRating = i.Attributes.Ratings > 0 ? i.Attributes.Ratings : null,
+                DownloadCount = i.Attributes.DownloadCount > 0 ? i.Attributes.DownloadCount : null,
                 Format = "srt",
                 ProviderName = Name,
                 ThreeLetterISOLanguageName = request.Language,
                 Id = BuildSubtitleId(request.Language, i),
-                Name = i.Attributes.Release,
+                Name = FormatName(i.Attributes.Release, i.Attributes.Ratings),
                 DateCreated = i.Attributes.UploadDate,
                 IsHashMatch = i.Attributes.MovieHashMatch,
                 HearingImpaired = i.Attributes.HearingImpaired,
                 MachineTranslated = i.Attributes.MachineTranslated,
                 AiTranslated = i.Attributes.AiTranslated,
-                FrameRate = i.Attributes.Fps,
+                FrameRate = i.Attributes.Fps > 0 ? i.Attributes.Fps : null,
                 Forced = i.Attributes.ForeignPartsOnly
             });
     }
@@ -233,7 +246,43 @@ public class BazarrPlusDownloader : ISubtitleProvider
         return id;
     }
 
-    private async Task<SubtitleResponse> GetSubtitlesInternal(string id, CancellationToken cancellationToken)
+    private static string? FormatName(string? release, float rating)
+    {
+        if (rating <= 0)
+        {
+            return release;
+        }
+
+        return string.IsNullOrEmpty(release)
+            ? string.Format(CultureInfo.InvariantCulture, "[{0:F1}] ?", rating)
+            : string.Format(CultureInfo.InvariantCulture, "[{0:F1}] {1}", rating, release);
+    }
+
+    private static string? FormatComment(string? uploader, string? provider, string? fileName)
+    {
+        var parts = new List<string>(3);
+
+        if (!string.IsNullOrEmpty(uploader))
+        {
+            parts.Add(uploader);
+        }
+
+        if (!string.IsNullOrEmpty(provider))
+        {
+            parts.Add(provider);
+        }
+
+        var prefix = parts.Count > 0 ? string.Join(" / ", parts) : null;
+
+        if (string.IsNullOrEmpty(fileName))
+        {
+            return prefix;
+        }
+
+        return prefix is not null ? $"{prefix} — {fileName}" : fileName;
+    }
+
+    private async Task<SubtitleResponse> GetSubtitlesInternal(string id, CancellationToken cancellationToken, bool alreadyRetriedAfterAuthFailure = false)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -305,10 +354,19 @@ public class BazarrPlusDownloader : ISubtitleProvider
                 }
 
                 case HttpStatusCode.Unauthorized:
+                    if (alreadyRetriedAfterAuthFailure)
+                    {
+                        _logger.LogError("Bazarr+ returned Unauthorized for file {FileId} even after re-login; giving up", fileId);
+                        throw new AuthenticationException(string.Format(
+                            CultureInfo.InvariantCulture,
+                            "Bazarr+ rejected the refreshed token while downloading file {0}",
+                            fileId));
+                    }
+
                     _logger.LogDebug("Received Unauthorized while downloading subtitle {FileId}, resetting login", fileId);
-                    // JWT token expired, obtain a new one and try again?
+                    // JWT token expired, obtain a new one and try again — but only once.
                     _login = null;
-                    return await GetSubtitlesInternal(id, cancellationToken).ConfigureAwait(false);
+                    return await GetSubtitlesInternal(id, cancellationToken, alreadyRetriedAfterAuthFailure: true).ConfigureAwait(false);
             }
 
             var msg = info.Body.Contains("<html", StringComparison.OrdinalIgnoreCase) ? "[html]" : info.Body;
@@ -345,7 +403,16 @@ public class BazarrPlusDownloader : ISubtitleProvider
         if (res.Code != HttpStatusCode.OK || string.IsNullOrWhiteSpace(res.Body))
         {
             var additionalMsg = string.Empty;
-            if (res.Code == HttpStatusCode.OK && string.IsNullOrWhiteSpace(res.Body))
+
+            // Two server-side shapes currently map to "broken / permanently unavailable subtitle":
+            //   1. 200 OK with an empty body (the documented empty-200 signal).
+            //   2. 404 Not Found from the stream URL (what Bazarr+ actually emits today when
+            //      the underlying file is missing — see service.py serve_subtitle_content).
+            // Either way the file_id won't start working on its own, so blocklist it to stop
+            // automated searches from re-picking it every scan.
+            var isBrokenEmpty200 = res.Code == HttpStatusCode.OK && string.IsNullOrWhiteSpace(res.Body);
+            var isBrokenStream404 = res.Code == HttpStatusCode.NotFound;
+            if (isBrokenEmpty200 || isBrokenStream404)
             {
                 additionalMsg = " - most likely a broken subtitle; check Bazarr+ logs for this file_id";
                 if (!_badSubtitleIds.Contains(fileId))
@@ -422,7 +489,7 @@ public class BazarrPlusDownloader : ISubtitleProvider
         }
     }
 
-    private async Task<string> GetLanguage(string language, string mediaPath, CancellationToken cancellationToken)
+    private async Task<string?> GetLanguage(string language, string mediaPath, CancellationToken cancellationToken)
     {
         if (language == "zh")
         {
@@ -456,7 +523,8 @@ public class BazarrPlusDownloader : ISubtitleProvider
             return await GetLanguage(language.Split('-')[0], mediaPath, cancellationToken).ConfigureAwait(false);
         }
 
-        throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture, "Language '{0}' is not supported ({1})", language, mediaPath));
+        _logger.LogWarning("Language '{Language}' is not supported by Bazarr+, skipping subtitle search for {Path}", language, mediaPath);
+        return null;
     }
 
     internal void ConfigurationChanged(PluginConfiguration e)
