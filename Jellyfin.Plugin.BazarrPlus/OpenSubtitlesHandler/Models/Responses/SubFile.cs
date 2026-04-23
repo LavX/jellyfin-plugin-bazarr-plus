@@ -12,4 +12,10 @@ public class SubFile
     /// </summary>
     [JsonPropertyName("file_id")]
     public int? FileId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the file name.
+    /// </summary>
+    [JsonPropertyName("file_name")]
+    public string? FileName { get; set; }
 }

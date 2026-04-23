@@ -52,6 +52,12 @@ public class Attributes
     public string? Comments { get; set; }
 
     /// <summary>
+    /// Gets or sets the provider that sourced this subtitle (e.g. "opensubtitlescom", "subdl").
+    /// </summary>
+    [JsonPropertyName("provider")]
+    public string? Provider { get; set; }
+
+    /// <summary>
     /// Gets or sets the uploader.
     /// </summary>
     [JsonPropertyName("uploader")]
