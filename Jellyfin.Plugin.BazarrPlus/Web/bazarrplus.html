@@ -6,8 +6,9 @@
                     <h2 class="sectionTitle sectionTitle-cards">Bazarr+ Subtitles</h2>
                     <p>
                         This plugin fetches subtitles from a self-hosted Bazarr+ instance via the
-                        OpenSubtitles-compatible REST endpoint. Enable the External Integration
-                        endpoint in your Bazarr+ Settings first.
+                        OpenSubtitles-compatible REST endpoint. Enable the endpoint in Bazarr+
+                        under Distribution Hub &rarr; Settings first (Settings &rarr; External
+                        Integration on Bazarr+ v2.2 and v2.3).
                     </p>
                 </div>
                 <div class="inputContainer">
@@ -19,7 +20,8 @@
                 <div class="inputContainer">
                     <input is="emby-input" type="password" id="BazarrToken" label="Bazarr+ API Token" required />
                     <div class="fieldDescription">
-                        Paste the token shown in Bazarr+ Settings &rarr; External Integration.
+                        Paste an API key from Bazarr+ Distribution Hub &rarr; API Keys
+                        (Settings &rarr; External Integration on Bazarr+ v2.2 and v2.3).
                     </div>
                 </div>
                 <div class="fieldDescription" id="bazarrplusresponse"></div>

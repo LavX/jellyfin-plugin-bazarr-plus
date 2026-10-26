@@ -8,9 +8,17 @@ endpoint.
 
 - Jellyfin **10.11.0+**
 - A running Bazarr+ **v2.2.0+** instance with:
-  - **External Integration** enabled (Settings → External Integration)
-  - At least one provider enabled under **Settings → Subtitles Sources**
-- The Bazarr+ API Token (shown in Settings → External Integration)
+  - The **Distribution Hub** endpoint enabled. In Bazarr+, open **Distribution Hub → Settings**,
+    turn on the consent switch and **Enable the Distribution Hub endpoint**, then click
+    **Save settings**. If a **Restart required** banner appears, restart Bazarr+.
+  - At least one provider enabled under **Subtitle Hub → My Providers**
+- A Bazarr+ API key. Open **Distribution Hub → API Keys** and click **New key** to give
+  Jellyfin a key of its own. The token is shown once, so copy it then. You can also use
+  **Reveal token** on the **Default (legacy token)** key.
+
+The Distribution Hub arrived in Bazarr+ v2.4.0. On v2.2.x and v2.3.x, enable the endpoint
+and copy the API token under **Settings → External Integration** instead. On v2.2.x,
+providers are enabled under **Settings → Subtitle Sources**.
 
 ## Installation
 
@@ -73,7 +81,7 @@ Drop it into a `Jellyfin.Plugin.BazarrPlus/` subdirectory of your `plugins/` fol
 1. **Dashboard → Plugins → My Plugins → Bazarr+ Subtitles → Settings**.
 2. Fill in:
    - **Bazarr+ URL**: e.g. `https://bazarr.example.com` or `http://bazarr.local:6767`
-   - **Bazarr+ API Token**: paste from Bazarr+'s Settings → External Integration.
+   - **Bazarr+ API Token**: paste the key from Bazarr+'s **Distribution Hub → API Keys**.
 3. **Save**.
 4. Enable the provider per library at **Dashboard → Libraries → [library] → Subtitle Downloaders**.
 5. Scan a library or click "Find Subtitles" on an item to verify end-to-end.
@@ -81,7 +89,7 @@ Drop it into a `Jellyfin.Plugin.BazarrPlus/` subdirectory of your `plugins/` fol
 ## Troubleshooting
 
 - **No results returned** → Confirm at least one provider is enabled in Bazarr+ under
-  Settings → Subtitles Sources, and that it can reach the internet.
+  Subtitle Hub → My Providers, and that it can reach the internet.
 - **401 / "Unable to login"** → API Token mismatch. Regenerate the token in Bazarr+ and
   re-paste it in the plugin settings.
 - **Downloads fail with HTTP 503** → Bazarr+'s upstream provider call failed. Check
