@@ -16,6 +16,10 @@ endpoint.
   Jellyfin a key of its own. The token is shown once, so copy it then. You can also use
   **Reveal token** on the **Default (legacy token)** key.
 
+The Distribution Hub arrived in Bazarr+ v2.4.0. On v2.2.x and v2.3.x, enable the endpoint
+and copy the API token under **Settings → External Integration** instead. On v2.2.x,
+providers are enabled under **Settings → Subtitle Sources**.
+
 ## Installation
 
 Three ways to install, from easiest to hardest.
