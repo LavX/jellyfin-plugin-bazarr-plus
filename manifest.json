@@ -10,7 +10,7 @@
         "versions": [
             {
                 "version": "1.0.1.0",
-                "changelog": "- Initial fork from jellyfin-plugin-opensubtitles\n- Retargeted at Bazarr+ compat endpoint\n- Independent reimplementation of OpenSubtitles REST protocol",
+                "changelog": "- Setup docs and the settings page now point at the Distribution Hub in Bazarr+ v2.4.0 and later, with the older steps kept for v2.2.x and v2.3.x\n- Search sends the file name and season/episode with the IMDb id so Bazarr+ can score by release match; results show the score, uploader and subtitle file name\n- Malformed login tokens no longer break search; the plugin signs in again instead\n- Query values keep their case (for example zh-CN), and the API key is no longer sent to external download links\n- Release workflow and build fixes",
                 "targetAbi": "10.11.0.0",
                 "sourceUrl": "https://github.com/LavX/jellyfin-plugin-bazarr-plus/releases/download/1.0.1/bazarr-subtitles_1.0.1.0.zip",
                 "checksum": "871e4b4f1f5b84751342945e5d3bdc85",
