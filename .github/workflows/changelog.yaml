@@ -13,8 +13,12 @@ on:
 
 jobs:
   call:
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
     uses: jellyfin/jellyfin-meta-plugins/.github/workflows/changelog.yaml@master
     with:
       repository-name: LavX/jellyfin-plugin-bazarr-plus
     secrets:
-      token: ${{ secrets.JF_BOT_TOKEN }}
+      token: ${{ secrets.GITHUB_TOKEN }}
