@@ -11,6 +11,8 @@ category: "Subtitles"
 artifacts:
   - "Jellyfin.Plugin.BazarrPlus.dll"
 changelog: |-
-  - Initial fork from jellyfin-plugin-opensubtitles
-  - Retargeted at Bazarr+ compat endpoint
-  - Independent reimplementation of OpenSubtitles REST protocol
+  - Setup docs and the settings page now point at the Distribution Hub in Bazarr+ v2.4.0 and later, with the older steps kept for v2.2.x and v2.3.x
+  - Search sends the file name and season/episode with the IMDb id so Bazarr+ can score by release match; results show the score, uploader and subtitle file name
+  - Malformed login tokens no longer break search; the plugin signs in again instead
+  - Query values keep their case (for example zh-CN), and the API key is no longer sent to external download links
+  - Release workflow and build fixes
