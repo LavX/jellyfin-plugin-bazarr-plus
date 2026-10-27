@@ -1,24 +1,30 @@
-name: '📝 Create/Update Release Draft & Release Bump PR'
+name: '📝 Update Release Draft'
+
+# Keeps exactly one DRAFT release up to date from merged PRs. It never
+# publishes: publishing is a manual step in the GitHub UI, and only that
+# (or a manual dispatch of publish.yaml) triggers the plugin build.
 
 on:
   push:
     branches:
       - master
-    paths-ignore:
-      - build.yaml
   workflow_dispatch:
-  repository_dispatch:
-    types:
-      - update-prep-command
+
+concurrency:
+  group: release-draft
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: read
 
 jobs:
-  call:
-    permissions:
-      contents: write
-      pull-requests: write
-      issues: write
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/changelog.yaml@master
-    with:
-      repository-name: LavX/jellyfin-plugin-bazarr-plus
-    secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}
+  update_release_draft:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Draft
+        uses: release-drafter/release-drafter@34d80673e067bdc0c24568d3af899c216adcfaa9 # v7.7.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commitish: master
+          publish: false
