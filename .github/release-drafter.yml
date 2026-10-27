@@ -1,8 +1,7 @@
-_extends: jellyfin-meta-plugins
+_extends: jellyfin/jellyfin-meta-plugins:release-drafter.yml
 
 template: |
   <!-- Optional: add a release summary here -->
-  [Plugin build can be downloaded here](https://repo.jellyfin.org/releases/plugin/open-subtitles/open-subtitles_$NEXT_MAJOR_VERSION.0.0.0.zip).
 
   ## :sparkles: What's New
 
